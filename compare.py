@@ -122,8 +122,11 @@ def compare_lc_and_invoice(lc, invoice, additional) -> Dict:
     lc_norm = lc_desc_clean.replace("-", " ").strip()
     inv_norm = inv_desc_clean.replace("-", " ").strip()
 
+    #checking module
+    
     invoice.hs_code = 12123131
     invoice.is_signed = False
+    invoice.total_amount = 20000000
 
     # print(f" The clean Invoice description {inv_desc_clean}")
     # print(f"The cleaned LC description {lc_desc_clean}")

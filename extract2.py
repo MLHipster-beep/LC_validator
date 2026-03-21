@@ -22,6 +22,89 @@ class DocClassify(BaseModel):
 
 
 class LCData(BaseModel):
+    """
+ROLE: Senior Trade Finance Auditor specializing in SWIFT MT700 LC documents.
+TASK: Extract structured data from this Letter of Credit document.
+
+### SECTION 1: PARTY NAME EXTRACTION (CRITICAL)
+For ALL party fields (applicant, beneficiary, issuing_bank, advising_bank):
+- Extract ONLY the legal company/entity name
+- DO NOT include address, city, country, floor, building, road, or any location details
+- Stop extracting when you encounter address keywords like: Complex, Road, Marg, Chowk, Street, Building, Floor, Block, Plot, Near, Opposite, P.O. Box, or any city/country name after the company name
+- Examples:
+  * "YETI BREWERY LTD. ATAL COMPLEX, UTTAR DHOKA, LAZIMPAT-2, KATHMANDU, NEPAL" → "YETI BREWERY LTD"
+  * "BARMALT MALTING (INDIA) PVT. LTD. FOR DETAILS SEE SECTION 47A (6)" → "BARMALT MALTING (INDIA) PVT LTD"
+  * "RASTRIYA BANIJYA BANK LTD, DHARMAPATH, KATHMANDU" → "RASTRIYA BANIJYA BANK LTD"
+  * "KOTAK MAHINDRA BANK, MUMBAI BRANCH" → "KOTAK MAHINDRA BANK"
+
+### SECTION 2: PORT/PLACE NORMALIZATION (CRITICAL)
+For place_of_loading and final_destination:
+- Extract ONLY the place name and country
+- REMOVE customs office names, route info, via points, and border crossing details
+- Always append country if not present. Format: "[PLACE], [COUNTRY]"
+- Special LC terms: Keep "ANY PLACE IN INDIA" or "ANY PORT IN INDIA" exactly as written
+- Examples:
+  * "CHITWAN, NEPAL VIA KRISHNANAGAR CUSTOM OFFICE NEPAL" → "CHITWAN, NEPAL"
+  * "NHAVA SHEVA (JNPT), INDIA" → "NHAVA SHEVA, INDIA"
+  * "ANY PLACE IN INDIA" → "ANY PLACE IN INDIA" (keep exactly as is)
+  * "BIRGUNJ" → "BIRGUNJ, NEPAL"
+  * "INDIA" → "INDIA"
+
+PORT/PLACE EXTRACTION
+
+For place_of_loading and final_destination:
+- Extract the full text as written
+- ALSO extract just the country name separately
+
+Examples:
+- "ANY PLACE IN INDIA" → 
+  * place_of_loading: "ANY PLACE IN INDIA"
+  * place_of_loading_country: "INDIA"
+  
+- "CHITWAN, NEPAL VIA KRISHNANAGAR" →
+  * final_destination: "CHITWAN, NEPAL"
+  * final_destination_country: "NEPAL"
+  
+- "NHAVA SHEVA, INDIA" →
+  * place_of_loading: "NHAVA SHEVA, INDIA"
+  * place_of_loading_country: "INDIA"
+
+
+### SECTION 3: OCR NOISE FILTERING
+- NUMERIC RECOVERY: Interpret 'O/o' as '0', 'I/l' as '1', 'S' as '5' in numeric fields
+  * "42000O.0O" → 420000.00
+  * "5O KG" → "50 KG"
+- SPACING: Fix run-together words only: "inHDPE" → "in HDPE"
+- CASING: DO NOT change casing of letters. If description is uppercase, keep uppercase. If mixed, keep mixed.
+- PUNCTUATION: DO NOT add or remove hyphens in product names. "6-ROW" stays "6-ROW". "6 ROW" stays "6 ROW"
+
+### SECTION 4: GOODS DESCRIPTION
+- 'raw_field_45a': Copy the COMPLETE text from Field 45A exactly as written
+- 'clean_goods_description': Extract ONLY product name and packaging detail
+  * Example: "6-ROW MALT PACKED IN HDPE BAGS EACH CONTAINING 50 KG (NET)"
+  * Remove quantity amounts, unit prices, HS codes from this field
+  * Keep: product name, packaging type, size/weight per unit
+
+### SECTION 5: DATE FORMATTING
+- Convert ALL dates to YYYY-MM-DD format regardless of input format
+  * "260216" → "2026-02-16"
+  * "08.12.2025" → "2025-12-08"
+  * "16 FEB 2026" → "2026-02-16"
+
+### SECTION 6: TOLERANCE (Field 39A)
+- Format is "PLUS/MINUS" → extract as two separate floats
+  * "5/5" → tolerance_plus_percentage: 5.0, tolerance_minus_percentage: 5.0
+  * "0/0" → tolerance_plus_percentage: 0.0, tolerance_minus_percentage: 0.0
+  * "10/5" → tolerance_plus_percentage: 10.0, tolerance_minus_percentage: 5.0
+
+### SECTION 7: SPECIAL CHARACTERS
+- "(AT)" → "@" for email addresses
+- "L/C" → "LC" in text fields
+
+Return ONLY valid JSON matching the schema. No explanations.
+"""
+
+    doc_type: Literal["LC"] = "LC" 
     # Header Information
     lc_number: str                  # Field 20: L25187000041
     issue_date: str                 # Field 31C: 251209
@@ -78,6 +161,52 @@ class LCData(BaseModel):
 
 
 class InvoiceData(BaseModel):
+    """
+ROLE: Pedantic Trade Finance Auditor.
+TASK: Extract Invoice data with character-level accuracy for LC discrepancy checking.
+
+### SECTION 1: PARTY NAME EXTRACTION
+For exporter_name and consignee_name:
+- Extract ONLY the legal company name
+- DO NOT include address, city, country, or location details
+- Examples:
+  * "BARMALT MALTING (INDIA) PVT. LTD., PUNE, MAHARASHTRA" → "BARMALT MALTING (INDIA) PVT LTD"
+  * "YETI BREWERY LTD., ATAL COMPLEX, KATHMANDU" → "YETI BREWERY LTD"
+
+### SECTION 2: DESCRIPTION OF GOODS (MOST CRITICAL FIELD)
+- Extract EXACTLY as printed on the invoice. Character-level accuracy required.
+- DO NOT fix typos in product names (if it says "MALTINGG", keep "MALTINGG")
+- DO NOT change casing (lowercase stays lowercase, uppercase stays uppercase)
+- DO NOT add or remove hyphens
+- DO fix OCR number errors in numeric parts only: "5O KG" → "50 KG"
+- DO fix spacing errors: "Packed inHDPE" → "Packed in HDPE"
+- Extract ONLY product name and packaging detail (not quantities or prices)
+- Example: "6 Row malt Packed in HDPE bags each containing 50 Kg (net)"
+
+### SECTION 3: NUMERIC PRECISION
+- Extract totals as clean floats. Remove currency symbols and commas.
+  * "INR 17,808,000.00" → 17808000.0
+  * "42000O" → 420000.0
+- unit_price: Extract per-unit price as float
+  * "INR 42.40/KG" → 42.40
+
+### SECTION 4: IDENTIFICATION NUMBERS
+- applicant_Pan: 9-digit PAN number of buyer
+- exporter_Pan: PAN number of seller/exporter
+- applicant_Exim_Code: EXIM registration code (usually starts with numbers + NP)
+
+### SECTION 5: VISUAL VERIFICATION
+- is_signed: True ONLY if actual handwritten signature visible (not printed name)
+- is_stamped: True ONLY if physical rubber stamp visible (blue/purple ink, circular or rectangular)
+
+### SECTION 6: SPECIAL HANDLING
+- "(AT)" → "@" for email addresses
+- full_text_raw: Dump the COMPLETE raw text of the document here
+
+Return ONLY valid JSON. No explanations.
+"""
+
+    doc_type: Literal["Invoice"] = "Invoice" 
     invoice_no: str              # 2025-26/055
     invoice_date: str            # 24.11.2025
     exporter_name: str           # Barmalt Malting (India) Pvt. Ltd.
@@ -114,6 +243,7 @@ class InvoiceData(BaseModel):
 
 
 class BillOfLadingData(BaseModel):
+    doc_type: Literal["BOL"] = "BOL"
     # Document identification
     bl_number: str
     bl_type: str  # "Original", "Copy", "Sea Waybill"
@@ -167,6 +297,7 @@ class BillOfLadingData(BaseModel):
     
 
 class PackingListData(BaseModel):
+    doc_type: Literal["PL"] = "PL"
     pl_number: str                 # Packing List Reference Number
     pl_date: str                   # Date of issuance
     lc_number_ref: str             # Field 47A(2) requires quoting the LC No.
@@ -214,6 +345,23 @@ class BiBiNiData(BaseModel):
     # Compliance checks
     is_signed: bool = False
     is_stamped: bool = False
+
+
+class MasterDocument(BaseModel):
+    filename: str  # e.g., "LC_Nepal_Bank.pdf"
+    doc_type: str  # e.g., "LC"
+    
+    # These are the "Optional Drawers"
+    lc_data: Optional[LCData] = None
+    invoice_data: Optional[InvoiceData] = None
+    
+    #more data to be added 
+
+
+class BatchResponse(BaseModel):
+    # A list of documents found in the 'parts' we sent
+    documents: List[MasterDocument]
+
 
 bol_manual =  {
     # Document identification
