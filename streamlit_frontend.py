@@ -9,27 +9,50 @@ from compare import compare_lc_and_invoice, df_result
 import pandas as pd
 from Contact_database import engine, Contact
 from sqlalchemy.orm import sessionmaker
-
-Session = sessionmaker(bind=engine)
-session = Session()
+import requests
 
 
+# Session = sessionmaker(bind=engine)
+# session = Session()
 
-# In your main.py Streamlit app
+
+
+# # In your main.py Streamlit app
+# st.sidebar.header("Request Pilot Access")
+# with st.sidebar.form("contact_form"):
+#     name = st.text_input("Your Name / Company")
+#     phone = st.text_input("WhatsApp Number")
+#     message = st.text_area("What feature do you need?")
+#     submitted = st.form_submit_button("Submit")
+    
+#     if submitted and phone:
+#         session = Session()
+#         new_contact = Contact(name=name, phone=phone, message=message)
+#         session.add(new_contact)
+#         session.commit()
+#         session.close()
+#         st.success("Thank you! We'll contact you on WhatsApp.")
+
+def save_to_google_sheet(name, phone, message):
+    # PASTE YOUR GOOGLE SCRIPT URL HERE
+    url = "https://script.google.com/macros/s/AKfycbwfm-whN6cgV1SA5ahOaVAlj7bHSkDEtMhIVzCnLtfJfvY3qkUcY0Oz7-IFYqEa4Hkq/exec"
+    data = {"name": name, "phone": phone, "message": message}
+    try:
+        requests.post(url, json=data)
+    except Exception as e:
+        print("Error saving lead:", e)
+
+    
 st.sidebar.header("Request Pilot Access")
-with st.sidebar.form("contact_form"):
-    name = st.text_input("Your Name / Company")
+with st.sidebar.form("contact"):
+    name = st.text_input("Name / Company")
     phone = st.text_input("WhatsApp Number")
     message = st.text_area("What feature do you need?")
     submitted = st.form_submit_button("Submit")
     
     if submitted and phone:
-        session = Session()
-        new_contact = Contact(name=name, phone=phone, message=message)
-        session.add(new_contact)
-        session.commit()
-        session.close()
-        st.success("Thank you! We'll contact you on WhatsApp.")
+        save_to_google_sheet(name, phone, message)
+        st.sidebar.success("Thank you! We'll contact you soon.")
 
 
 st.write("# TradingDocs Validator")
