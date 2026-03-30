@@ -100,7 +100,7 @@ def normalize_company_name(name:str) -> str:
 
 
 def max_val(quantity, value):
-    maximum_val = quantity + ((value/100) * quantity)
+    maximum_val = quantity + ((value/100)*quantity)
     return maximum_val
 
 def min_val(quantity, value):
@@ -209,14 +209,14 @@ def compare_lc_and_invoice(lc, invoice, additional) -> Dict:
         })
 
     
-    is_profoma = "PROFORMA" in invoice.full_text_raw.upper()
+    # is_profoma = "PROFORMA" in invoice.full_text_raw.upper()
 
-    if not is_profoma and lc.lc_number not in invoice.full_text_raw:
-        discrepancies.append({
-            'field': 'LC Reference',
-            'severity': 'CRITICAL',
-            'message': f"LC Number {lc.lc_number} not explicitly mentioned on Invoice."
-        })
+    # if not is_profoma and lc.lc_number not in invoice.full_text_raw:
+    #     discrepancies.append({
+    #         'field': 'LC Reference',
+    #         'severity': 'CRITICAL',
+    #         'message': f"LC Number {lc.lc_number} not explicitly mentioned on Invoice."
+    #     })
     
     # elif is_profoma:
     #     return ("INFO: Proforma Invoice detected. LC Reference check bypassed.")

@@ -110,7 +110,7 @@ Return ONLY valid JSON matching the schema. No explanations.
     issue_date: str                 # Field 31C: 251209
 
     # The full raw text from Field 45A for record-keeping
-    raw_field_45a: str 
+    # raw_field_45a: str 
     
     # A cleaner version for the Triple-Match comparison
     # AI Prompt instruction: "Extract only the product name and packaging detail"
@@ -222,7 +222,7 @@ Return ONLY valid JSON. No explanations.
     destination_country: str     # NEPAL
     delivery_terms: str          # Ex-Works, India
     payment_terms: str           # 30 Days from date of invoice under L/C
-    full_text_raw: str           # Dump complete text here to check if it contains some special number
+    # full_text_raw: str           # Dump complete text here to check if it contains some special number
     applicant_Pan: str
     exporter_Pan: str
     applicant_Exim_Code: str

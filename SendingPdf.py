@@ -1,7 +1,12 @@
 from google import genai
 from google.genai import types
 
-client = genai.Client(api_key="AIzaSyBaH4O7zSU4Sir_RgxCHTbY5Xih_NB3V8Y") #lucky, carp 
+import os 
+from dotenv import load_dotenv
+
+load_dotenv()
+
+client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
 
 def send_pdf(prompt, file_name, schema ):
 
@@ -73,6 +78,7 @@ def classify_doc(prompt, streamlit_file):
 from google.genai import types 
 
 def process_all_document(files, schema):
+    # check for images and other types 
     parts = []
     
     for f in files:

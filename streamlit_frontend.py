@@ -7,6 +7,30 @@ from SendingPdf import classify_doc, process_all_document
 import json
 from compare import compare_lc_and_invoice, df_result
 import pandas as pd
+from Contact_database import engine, Contact
+from sqlalchemy.orm import sessionmaker
+
+Session = sessionmaker(bind=engine)
+session = Session()
+
+
+
+# In your main.py Streamlit app
+st.sidebar.header("Request Pilot Access")
+with st.sidebar.form("contact_form"):
+    name = st.text_input("Your Name / Company")
+    phone = st.text_input("WhatsApp Number")
+    message = st.text_area("What feature do you need?")
+    submitted = st.form_submit_button("Submit")
+    
+    if submitted and phone:
+        session = Session()
+        new_contact = Contact(name=name, phone=phone, message=message)
+        session.add(new_contact)
+        session.commit()
+        session.close()
+        st.success("Thank you! We'll contact you on WhatsApp.")
+
 
 st.write("# TradingDocs Validator")
 
@@ -24,7 +48,7 @@ uploaded_files = st.file_uploader("Upload Important trade documents [LC, Invoice
 batch_result = None
 
 if st.button("Categorize Document"):
-    with st.spinner("Gemini is identifying documents.. "):
+    with st.spinner("Identifying documents.. "):
         batch_result = process_all_document(uploaded_files, BatchResponse)
 
         for doc in batch_result.documents:
@@ -43,7 +67,7 @@ if st.button("Categorize Document"):
     #             # Save the final result to memory
                 st.session_state.result = compare_lc_and_invoice(st.session_state.lc_data, st.session_state.invoice_data, add_condition)
         else:
-            st.error("Gemini failed to extract structured data. Check document quality.")
+            st.error("Failed to extract structured data. Check document quality.")
 
 
 st.write("---")
