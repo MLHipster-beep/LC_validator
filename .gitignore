@@ -3,4 +3,10 @@ __pycache__/
 .env
 .streamlit/
 venv/
+*.db__pycache__/
+*.pyc
+.env
+.venv/
 *.db
+node_modules/
+.next/

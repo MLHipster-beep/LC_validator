@@ -122,11 +122,6 @@ def compare_lc_and_invoice(lc, invoice, additional) -> Dict:
     lc_norm = lc_desc_clean.replace("-", " ").strip()
     inv_norm = inv_desc_clean.replace("-", " ").strip()
 
-    #checking module
-    
-    invoice.hs_code = 12123131
-    invoice.is_signed = False
-    invoice.total_amount = 20000000
 
     # print(f" The clean Invoice description {inv_desc_clean}")
     # print(f"The cleaned LC description {lc_desc_clean}")
@@ -242,15 +237,15 @@ def compare_lc_and_invoice(lc, invoice, additional) -> Dict:
     if additional. must_be_signed_stamped:
         if not invoice.is_signed:
             discrepancies.append({
-            'field': 'Stamp',
+            'field': 'Signature',
             'severity': 'CRITICAL',
-            'message': f"Stamp is missing in Invoice"
+            'message': "Signature is missing in Invoice"
         })
         if not invoice.is_stamped:
             discrepancies.append({
-            'field': 'Signature',
+            'field': 'Stamp',
             'severity': 'CRITICAL',
-            'message': f"Signature is missing in Invoice"
+            'message': "Stamp is missing in Invoice"
         })
 
 
